@@ -464,6 +464,19 @@ function basePost(type: PostType, authorId: string, title: string, description: 
   };
 }
 
+// ── safety net: a bad request must never crash the server mid-demo ──────────
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err?.type === "entity.parse.failed" || err instanceof SyntaxError) {
+    return res.status(400).json({ error: "invalid JSON body" });
+  }
+  console.error("[error]", err?.message || err);
+  if (!res.headersSent) res.status(500).json({ error: "server error" });
+});
+
+// Last-resort guards: log, never exit. The on-stage server stays up no matter what.
+process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
+process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e));
+
 // ── boot ──────────────────────────────────────────────────────────────────
 loadFallbacks();
 app.listen(PORT, "0.0.0.0", () => {
