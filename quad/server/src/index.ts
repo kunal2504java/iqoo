@@ -250,6 +250,46 @@ app.get("/active-users", (req, res) => {
   res.json({ users: active, me: user.id });
 });
 
+// ── Campus Nudge — short friendly pings between map users ──
+app.post("/nudge", (req, res) => {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({ error: "no user" });
+  const { to_id, text } = req.body ?? {};
+  if (!to_id || typeof text !== "string") return res.status(400).json({ error: "to_id and text required" });
+  const to = store.getUser(to_id);
+  if (!to) return res.status(404).json({ error: "user not found" });
+  if (to.id === user.id) return res.status(400).json({ error: "can't nudge yourself" });
+  const clean = text.trim().slice(0, 60);
+  if (!clean) return res.status(400).json({ error: "text empty" });
+  const nudge = {
+    id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    from_id: user.id,
+    to_id: to.id,
+    text: clean,
+    read: false,
+    created_at: new Date().toISOString(),
+  };
+  store.addNudge(nudge);
+  res.json({ ok: true, nudge });
+});
+
+app.get("/nudges", (req, res) => {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({ error: "no user" });
+  const nudges = store.nudgesFor(user.id).map((n) => {
+    const from = store.author(n.from_id);
+    return { ...n, from_name: from.name, from_avatar: from.avatar, from_role: from.role };
+  });
+  res.json({ nudges, unread_count: store.unreadNudgeCount(user.id) });
+});
+
+app.post("/nudges/read", (req, res) => {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({ error: "no user" });
+  store.markNudgesRead(user.id);
+  res.json({ ok: true });
+});
+
 // ── Campus Live Events Feed ──
 app.get("/events/live", (req, res) => {
   const user = currentUser(req);

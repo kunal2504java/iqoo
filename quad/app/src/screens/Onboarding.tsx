@@ -62,9 +62,9 @@ export default function Onboarding() {
     setError("");
     try {
       await login(identity.id);
-      // Update interests on server if changed
+      // Update interests on server if changed (non-blocking — don't let this fail navigation)
       if (pickedInterests.length) {
-        await api.updateInterests(pickedInterests);
+        api.updateInterests(pickedInterests).catch(() => {});
       }
       navigate("/feed", { replace: true });
     } catch (e) {

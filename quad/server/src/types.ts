@@ -95,6 +95,16 @@ export interface Interaction {
   at: string;
 }
 
+// ── Campus Nudge — a short, friendly ping from one user to another on the map ─
+export interface Nudge {
+  id: string;
+  from_id: string;
+  to_id: string;
+  text: string; // max 60 chars, pre-set or custom
+  read: boolean;
+  created_at: string;
+}
+
 export interface Stats {
   notes: number;
   drives: number;

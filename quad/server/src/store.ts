@@ -2,7 +2,7 @@
 // from a known state. Behind a small interface, so a real DB could slot in later.
 
 import { buildSeed } from "./seed.js";
-import type { CalendarEvent, Interaction, Post, Stats, User } from "./types.js";
+import type { CalendarEvent, Interaction, Post, Stats, User, Nudge } from "./types.js";
 
 class Store {
   users = new Map<string, User>();
@@ -13,6 +13,7 @@ class Store {
   calendar: CalendarEvent[] = [];
   ackedMemories = new Set<string>(); // `${userId}:${eventId}`
   tips = new Map<string, Set<string>>(); // postId -> Set<tipperUserId>
+  nudges: Nudge[] = [];
 
   constructor() {
     this.reset();
@@ -128,6 +129,20 @@ class Store {
     author.points += amount;
     this.addInteraction({ user_id: tipperId, post_id: postId, action: "verify", at: new Date().toISOString() });
     return { author, newPoints: author.points, tipCount: post.tip_count };
+  }
+
+  // ── Campus Nudge — short friendly pings between users on the map ──
+  addNudge(n: Nudge) {
+    this.nudges.push(n);
+  }
+  nudgesFor(userId: string): Nudge[] {
+    return this.nudges.filter((n) => n.to_id === userId).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+  unreadNudgeCount(userId: string): number {
+    return this.nudges.filter((n) => n.to_id === userId && !n.read).length;
+  }
+  markNudgesRead(userId: string) {
+    this.nudges.forEach((n) => { if (n.to_id === userId) n.read = true; });
   }
 
   // ── Campus Map: zone activity counts ──

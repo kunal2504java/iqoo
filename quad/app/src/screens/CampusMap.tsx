@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Map as MapIcon, Navigation, Users, Crosshair } from "lucide-react";
+import { ArrowLeft, Map as MapIcon, Navigation, Users, Crosshair, Send, Zap } from "lucide-react";
 import { api } from "../api";
 import type { User } from "../api";
 
@@ -55,6 +55,10 @@ export default function CampusMap() {
   const [activeUsers, setActiveUsers] = useState<User[]>([]);
   const [zones, setZones] = useState<ZoneMarker[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [nudgePanel, setNudgePanel] = useState(false);
+  const [nudgeText, setNudgeText] = useState("");
+  const [nudgeLoading, setNudgeLoading] = useState(false);
+  const [nudgeSent, setNudgeSent] = useState(false);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
 
@@ -255,8 +259,8 @@ export default function CampusMap() {
           </button>
         </div>
 
-        {/* Selected user card */}
-        {selectedUser && (
+        {/* Selected user card + Nudge panel */}
+        {selectedUser && !nudgePanel && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -272,6 +276,73 @@ export default function CampusMap() {
               </div>
               <button onClick={() => setSelectedUser(null)} className="text-muted hover:text-ink text-xs">✕</button>
             </div>
+            <button
+              onClick={() => { setNudgePanel(true); setNudgeSent(false); setNudgeText(""); }}
+              className="btn btn-blue mt-2 w-full text-[11px] h-9"
+            >
+              <Zap size={12} /> Poke / Nudge
+            </button>
+          </motion.div>
+        )}
+
+        {/* Nudge panel — short casual message */}
+        {selectedUser && nudgePanel && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-4 left-4 right-4 z-10 border border-hairline bg-surface p-3"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted machined">Say hi to {selectedUser.name.split(" ")[0]}</span>
+              <button onClick={() => setNudgePanel(false)} className="text-muted hover:text-ink text-xs">✕</button>
+            </div>
+
+            {!nudgeSent ? (
+              <>
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {["Poke 👋", "Hey!", "Up for chai? ☕", "Seen you around!"].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setNudgeText(preset)}
+                      className={`chip text-[10px] ${nudgeText === preset ? "chip-on" : ""}`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={nudgeText}
+                    onChange={(e) => setNudgeText(e.target.value.slice(0, 60))}
+                    placeholder="Or type something chill…"
+                    className="input flex-1 h-9 text-xs px-3"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!nudgeText.trim()) return;
+                      setNudgeLoading(true);
+                      try {
+                        await api.nudgeUser(selectedUser.id, nudgeText.trim());
+                        setNudgeSent(true);
+                      } catch (e) {
+                        alert((e as Error).message);
+                      } finally {
+                        setNudgeLoading(false);
+                      }
+                    }}
+                    disabled={nudgeLoading || !nudgeText.trim()}
+                    className="btn btn-fill px-3 h-9"
+                  >
+                    <Send size={12} />
+                  </button>
+                </div>
+                <div className="mt-1 text-[9px] text-muted text-right">{nudgeText.length}/60</div>
+              </>
+            ) : (
+              <div className="py-2 text-center text-sm text-m-blue">
+                Nudge sent to {selectedUser.name.split(" ")[0]}! 🚀
+              </div>
+            )}
           </motion.div>
         )}
       </div>

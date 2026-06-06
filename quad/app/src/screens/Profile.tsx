@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Hash, LogOut, Crown, Coins, Trophy, Medal, Award } from "lucide-react";
+import { ArrowLeft, Hash, LogOut, Crown, Coins, Trophy, Medal, Award, Bell } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import type { User } from "../api";
@@ -24,11 +24,29 @@ export default function Profile() {
   const [picked, setPicked] = useState<string[]>(user?.interests || []);
   const [leaderboard, setLeaderboard] = useState<User[]>([]);
   const [lbLoading, setLbLoading] = useState(true);
+  const [nudges, setNudges] = useState<{ id: string; from_name: string; from_avatar?: string; from_role: string; text: string; read: boolean; created_at: string }[]>([]);
+  const [nudgeUnread, setNudgeUnread] = useState(0);
+  const [nudgeLoading, setNudgeLoading] = useState(true);
 
   useEffect(() => {
     api.getLeaderboard()
       .then((r) => setLeaderboard(r.users))
       .finally(() => setLbLoading(false));
+  }, []);
+
+  const loadNudges = () => {
+    setNudgeLoading(true);
+    api.getNudges()
+      .then((r) => {
+        setNudges(r.nudges);
+        setNudgeUnread(r.unread_count);
+      })
+      .catch(() => {})
+      .finally(() => setNudgeLoading(false));
+  };
+
+  useEffect(() => {
+    loadNudges();
   }, []);
 
   const toggle = (tag: string) => {
@@ -84,6 +102,52 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Nudges — friendly pings from campus */}
+          <div className="mt-6">
+            <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted">
+              <Bell size={14} />
+              <span>Nudges</span>
+              {nudgeUnread > 0 && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-m-red px-1 text-[9px] font-bold text-white">
+                  {nudgeUnread}
+                </span>
+              )}
+            </div>
+            {nudgeLoading ? (
+              <div className="h-12 animate-pulse bg-surface border border-hairline" />
+            ) : nudges.length === 0 ? (
+              <div className="border border-hairline bg-surface p-4 text-center text-xs text-muted">
+                No nudges yet. Go to the map and say hi to someone!
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {nudges.map((n) => (
+                  <motion.div
+                    key={n.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex items-center gap-3 border p-3 ${n.read ? "border-hairline bg-surface opacity-70" : "border-m-blue bg-m-blue/5"}`}
+                  >
+                    <span className="text-lg">{n.from_avatar || "👤"}</span>
+                    <div className="flex-1">
+                      <div className="text-xs font-medium text-ink">{n.from_name} <span className="text-[10px] text-muted">· {n.from_role}</span></div>
+                      <div className="text-sm text-body mt-0.5">{n.text}</div>
+                    </div>
+                    {!n.read && <div className="h-2 w-2 rounded-full bg-m-blue" />}
+                  </motion.div>
+                ))}
+                {nudgeUnread > 0 && (
+                  <button
+                    onClick={() => { api.markNudgesRead().then(loadNudges); }}
+                    className="btn btn-ghost w-full h-9 text-[11px]"
+                  >
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Leaderboard */}

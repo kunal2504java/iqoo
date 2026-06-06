@@ -1,5 +1,5 @@
-// API client for Quad. All calls go to the local Node backend.
-export const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+// API client for Quad. Hardcoded to laptop LAN IP for hackathon demo.
+export const API_BASE = "http://10.2.204.159:4000";
 
 export function imageUrl(path?: string): string {
   if (!path) return "";
@@ -256,6 +256,20 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ emoji }),
     }),
+
+  // ── Campus Nudge — map pings ──
+  nudgeUser: (to_id: string, text: string) =>
+    fetchJSON<{ ok: boolean; nudge: { id: string; from_id: string; to_id: string; text: string; created_at: string } }>("/nudge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to_id, text }),
+    }),
+
+  getNudges: () =>
+    fetchJSON<{ nudges: { id: string; from_id: string; from_name: string; from_avatar?: string; from_role: string; text: string; read: boolean; created_at: string }[]; unread_count: number }>("/nudges"),
+
+  markNudgesRead: () =>
+    fetchJSON<{ ok: boolean }>("/nudges/read", { method: "POST" }),
 
   reset: () => fetchJSON<{ ok: boolean }>("/admin/reset", { method: "POST" }),
 };
