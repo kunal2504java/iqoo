@@ -37,6 +37,7 @@ export default function Onboarding() {
   const [branch, setBranch] = useState("CSE");
   const [year, setYear] = useState("3");
   const [pickedInterests, setPickedInterests] = useState<string[]>([]);
+  const [error, setError] = useState("");
 
   const identity = IDENTITIES.find((i) => i.id === selectedId);
 
@@ -58,6 +59,7 @@ export default function Onboarding() {
   const finish = async () => {
     if (!identity) return;
     setLoading(true);
+    setError("");
     try {
       await login(identity.id);
       // Update interests on server if changed
@@ -65,6 +67,8 @@ export default function Onboarding() {
         await api.updateInterests(pickedInterests);
       }
       navigate("/feed", { replace: true });
+    } catch (e) {
+      setError((e as Error).message || "Could not connect to campus server.");
     } finally {
       setLoading(false);
     }
@@ -170,6 +174,13 @@ export default function Onboarding() {
           <button className="btn btn-fill w-full" onClick={finish} disabled={loading}>
             {loading ? "Entering campus…" : "Enter Quad"}
           </button>
+          {error && (
+            <div className="mt-3 border-l-2 border-m-red bg-m-red/10 px-3 py-2 text-[11px] text-m-red">
+              {error.includes("Failed to fetch") || error.includes("NetworkError")
+                ? "Cannot reach campus server. Make sure your laptop and phone are on the same Wi-Fi, and VITE_API_URL is set to your laptop's IP (e.g., http://192.168.1.x:4000)."
+                : error}
+            </div>
+          )}
         </div>
       )}
 
