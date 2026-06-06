@@ -337,3 +337,93 @@ Cheap version: hash normalized `summary` text; if cosine/sim over a threshold ag
 
 ## 9. What we are explicitly NOT building today
 Lecture transcription (Phase 2), full SSO, pgvector embeddings (tag-match instead), real push infra (in-app notifications instead), expense splitter / timetable / mess utilities beyond the one menu-scan demo, admin moderation. State these as roadmap with confidence — don't apologize for them.
+
+---
+
+## 10. Implementation status — as built (updated 2026-06-06)
+
+> This section reflects what is **actually implemented and running**, which has grown past the original §1 spec. Sections 1–9 remain the product vision; the divergences below are deliberate and honest.
+
+### Status at a glance
+- **All CORE features (F1–F6) are built, wired end-to-end, and demo-ready.** Live AI calls succeed through the real provider, with the on-stage fallback in place.
+- Several **bonus features** shipped on top of CORE (campus map, voice notes, oracle, points, leaderboard, live events).
+- **Android APK is built** (`Quad-debug.apk`, ~8.6 MB) and installs on the iQOO device.
+- Both servers run locally; the phone reaches the backend over the LAN.
+
+### Actual stack (diverged from §0/§4/§6 — intentional)
+| Area | PRD said | Built with | Why |
+|---|---|---|---|
+| LLM provider | Claude API (direct) | **OpenRouter** (OpenAI-compatible gateway) | One key, swappable models, cheaper |
+| Vision model | "current vision model" | **`qwen/qwen2.5-vl-72b-instruct`** | Cheap, strong multilingual (Hindi+English) handwriting OCR |
+| Text model (Ghost Senior, Oracle) | — | **`qwen/qwen3-235b-a22b-2507`** | Cheap + capable chat |
+| Data layer | Postgres + object store | **In-memory store + local disk** (`/uploads`) | No DB setup risk; resets clean every rehearsal; runs on the laptop |
+| Matching | tag overlap (no embeddings) | **tag overlap** ✅ as planned | Looks semantic, 10× faster to build |
+| TTS (voice notes) | not in original PRD | **RumiK TTS** (`mulberry` model, gender-specific) | Bonus feature |
+| Map | not in original PRD | **Google Maps JS API** | Bonus feature |
+| App shell | Capacitor | **Capacitor 8 → Android APK** ✅ | As planned |
+| Design | "campus at night" + 1 accent | **BMW-M design system** (true-black canvas, white machined type, M-tricolor accent, 0px radius) via `getdesign` | Distinctive, non-generic |
+
+All AI calls go through the backend (keys never reach the client), return strict JSON, and parse defensively. The note-enrichment fallback (served on timeout/error so the on-stage reveal never hangs) is implemented.
+
+### Feature checklist
+| | Feature | State |
+|---|---|---|
+| F1 | Notes intelligence (scan → OCR + summary + key points + flashcards + tags + resources, one call) | ✅ live (Qwen-VL) |
+| F2 | Ghost Senior (ask-a-note RAG, in the contributor's voice) | ✅ live, + offline keyword fallback |
+| F3 | Camera reads campus (poster → event / drive; mess menu seeded) | ✅ live |
+| F4 | Reverse discovery (drive → matching candidate students) | ✅ seeded + live tag-match fallback |
+| F5 | Two-campus personalization + trust + compounding counter (increments live) | ✅ |
+| F6 | **Proactive Campus Memory** (seeded calendar + rule engine + memory cards in feed) | ✅ — fires unprompted for the fresher |
+
+### Bonus features built (beyond original scope)
+- **Campus Oracle** — campus-wide natural-language Q&A over all accumulated posts + deadlines (`POST /oracle`). The "ask the whole campus memory" surface.
+- **Campus Map** (Google Maps) — posts/activity by zone, **live student presence**, and **Campus Nudge** (send a short ping to another student on the map).
+- **Voice Notes** — type → **RumiK TTS** → WAV pinned to the map at your location, **gender-specific** (female/male via the `mulberry` model + voice description + pitch). Tap a 🎙️ marker to play.
+- **Quad Points + tipping** — "hearts" on useful notes (max 50/post); authors earn points; a **leaderboard** ranks contributors. This *is* the "institution's memory growing," per-contributor.
+- **Live events feed** — RSVP + emoji reactions on events.
+
+### Real API surface (as implemented)
+```
+GET  /health                         vision/text model + live-AI status
+POST /auth/login                     {identity} -> {token, user}      [demo auth]
+GET  /users                          all seeded users (identity picker)
+GET  /me  ·  PATCH /me/interests     profile read / edit
+GET  /feed                           ranked posts + memory_cards[] (F6) + stats
+GET  /stats                          compounding counter
+GET  /calendar                       seeded academic calendar (F6)
+GET  /memory  ·  POST /memory/:id/ack   proactive cards / "add to calendar"
+POST /contribute                     multipart image: note|poster|drive|text -> enriched post
+POST /contribute/voice               {text, voice:"male"|"female"} -> RumiK WAV post
+GET  /post/:id                       full post + enrichment
+POST /post/:id/ask                   Ghost Senior (RAG)
+POST /post/:id/verify                +1 trust
+POST /post/:id/tip                   {amount} -> Quad Points to author
+GET  /map  ·  GET /active-users      campus map zones / live presence
+POST /nudge  ·  GET /nudges  ·  POST /nudges/read    Campus Nudge pings
+GET  /voices                         voice notes for the map
+GET  /events/live  ·  POST /events/:id/rsvp  ·  POST /events/:id/react
+POST /drive  ·  GET /drive/:id/candidates    post drive / reverse discovery
+POST /oracle                         {query} -> campus-wide answer + sources + deadlines
+POST /admin/reset                    re-seed to a known state for the next rehearsal
+```
+
+### Screens built (React + Capacitor)
+Onboarding · Feed (with F6 memory cards + compounding counter) · Contribute (note/poster/drive/text/voice, two-tap) · Enrichment reveal (staggered) · Note detail + Ghost Senior · Drive detail + reverse discovery · Two-campus split · Profile · **Campus Oracle** · **Campus Map** · **Live events**.
+
+### Build & deploy status
+- **Backend:** `quad/server` — Node + Express + TypeScript, in-memory store, runs on `0.0.0.0:4000`. `npm start`. Needs `OPENROUTER_API_KEY` + `RUMIK_API_KEY` in `server/.env` (both set; gitignored).
+- **Frontend:** `quad/app` — Vite + React + TS + Tailwind (BMW-M tokens). `npm run dev` (browser) or built into the APK.
+- **Android APK:** `Quad-debug.apk` at repo root (and `quad/app/android/app/build/outputs/apk/debug/`). Built with JDK 21 (Android Studio JBR); manifest has cleartext HTTP + CAMERA/MIC/LOCATION/INTERNET permissions.
+- **GitHub:** all source pushed to `github.com/kunal2504java/iqoo` (`main`). `.env` files and the APK are not committed.
+
+### To run the demo
+1. `cd quad/server && npm start` (backend on `:4000`, with both keys in `.env`).
+2. Ensure the phone + laptop are on the same Wi-Fi **and** `quad/app/src/api.ts` `API_BASE` matches the laptop's current LAN IP (currently `http://10.2.204.159:4000`). **If the IP changes, update it and rebuild the APK.**
+3. Install `Quad-debug.apk` on the iQOO; grant Camera/Mic/Location on first use.
+4. `POST /admin/reset` before each rehearsal for a clean counter.
+
+### Known runtime caveats
+- **Baked-in API IP** is the #1 risk: the LAN IP is compiled into the APK bundle. Change network → rebuild (or add an in-app server-URL setting — recommended next step).
+- **Debug-signed APK** — fine for sideloading, not Play Store.
+- **Google Maps** uses a browser JS key; if the map is blank, the key's referrer/app restrictions are the cause — the rest of the app is unaffected.
+- In-memory store means **contributions reset on server restart** (intended — clean rehearsals).
