@@ -34,6 +34,7 @@ export interface Post {
   description: string;
   image_url?: string;
   voice_url?: string;
+  voice_gender?: "male" | "female";
   status: string;
   topic_tags: string[];
   branch_relevance: string[];
@@ -262,12 +263,12 @@ export const api = {
       body: JSON.stringify({ emoji }),
     }),
 
-  // ── Voice Note — RumiK TTS ──
-  contributeVoice: (text: string) =>
+  // ── Voice Note — RumiK TTS (gender-specific via mulberry) ──
+  contributeVoice: (text: string, voice: "male" | "female" = "female") =>
     fetchJSON<{ post: Post; used_fallback: boolean; matched_count: number; stats: Stats }>("/contribute/voice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, voice }),
     }),
 
   // ── Campus Nudge — map pings ──

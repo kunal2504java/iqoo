@@ -2,7 +2,7 @@
 // from a known state. Behind a small interface, so a real DB could slot in later.
 
 import { buildSeed } from "./seed.js";
-import type { CalendarEvent, Interaction, Post, Stats, User, Nudge } from "./types.js";
+import type { CalendarEvent, Interaction, Post, PostType, Stats, User, Nudge } from "./types.js";
 
 class Store {
   users = new Map<string, User>();
@@ -106,7 +106,7 @@ class Store {
   }
 
   // ── Stats (the compounding-value counter) ──
-  bumpStats(kind: "note" | "drive" | "event" | "announcement" | "menu") {
+  bumpStats(kind: PostType) {
     this.stats.enrichments += 1;
     if (kind === "note") this.stats.notes += 1;
     if (kind === "drive") this.stats.drives += 1;

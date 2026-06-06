@@ -193,11 +193,12 @@ app.post("/contribute/voice", async (req, res) => {
   const text = (req.body?.text || "").trim();
   if (!text) return res.status(400).json({ error: "text required" });
   if (text.length > 200) return res.status(400).json({ error: "max 200 chars" });
+  const gender: "male" | "female" = req.body?.voice === "male" ? "male" : "female";
 
   try {
     let voiceUrl = "";
     if (hasRumikKey) {
-      const wav = await synthesizeSpeech(text, { model: "muga" });
+      const wav = await synthesizeSpeech(text, { gender });
       const fname = `voice_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.wav`;
       fs.writeFileSync(path.join(UPLOAD_DIR, fname), wav);
       voiceUrl = `/uploads/${fname}`;
@@ -210,6 +211,7 @@ app.post("/contribute/voice", async (req, res) => {
       title: "🎙️ Voice Note",
       description: text,
       voice_url: voiceUrl,
+      voice_gender: gender,
       status: "enriched",
       topic_tags: ["Voice"],
       branch_relevance: [user.branch],

@@ -15,6 +15,7 @@ export default function Contribute() {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [voiceText, setVoiceText] = useState("");
+  const [voiceGender, setVoiceGender] = useState<"male" | "female">("female");
   // Drive-specific fields
   const [driveRole, setDriveRole] = useState("");
   const [driveCtc, setDriveCtc] = useState("");
@@ -52,7 +53,7 @@ export default function Contribute() {
         });
         setResult({ post: res.post, matched_count: res.matched_count, stats: res.stats });
       } else if (kind === "voice") {
-        const res = await api.contributeVoice(voiceText);
+        const res = await api.contributeVoice(voiceText, voiceGender);
         setResult({ post: res.post, matched_count: res.matched_count, stats: res.stats });
       } else {
         const form = new FormData();
@@ -169,6 +170,26 @@ export default function Contribute() {
                   maxLength={200}
                 />
                 <div className="text-[10px] text-muted text-right">{voiceText.length}/200</div>
+
+                {/* Gender-specific voice (RumiK mulberry + description) */}
+                <p className="text-xs uppercase tracking-widest text-muted pt-1">Voice</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["female", "male"] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setVoiceGender(g)}
+                      className={`flex items-center justify-center gap-2 border px-3 py-2.5 text-sm transition-colors ${
+                        voiceGender === g
+                          ? "border-m-red bg-m-red/10 text-ink"
+                          : "border-hairline bg-surface text-muted hover:border-ink"
+                      }`}
+                    >
+                      <span className="text-base">{g === "female" ? "👩" : "👨"}</span>
+                      <span className="capitalize">{g}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {(kind === "note" || kind === "poster") && (

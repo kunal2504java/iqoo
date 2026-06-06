@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Map as MapIcon, Navigation, Users, Crosshair, Send, Zap } from "lucide-react";
-import { api } from "../api";
+import { api, imageUrl } from "../api";
 import type { User } from "../api";
 
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -95,12 +95,15 @@ export default function CampusMap() {
   }, []);
 
   const playVoice = (url: string) => {
+    if (!url) return;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
-    const a = new Audio(url);
-    a.play();
+    // voice_url is a backend-relative path (/uploads/..); make it absolute so it
+    // resolves to the API server, not the app origin (localhost:5173 / capacitor://).
+    const a = new Audio(imageUrl(url));
+    a.play().catch((e) => console.warn("voice playback failed:", e));
     audioRef.current = a;
     a.onended = () => { audioRef.current = null; };
   };
@@ -209,6 +212,7 @@ export default function CampusMap() {
         // Voice note markers — glowing red recording dots
         voices.forEach((v) => {
           if (!v.lat || !v.lng) return;
+          const genderIcon = v.voice_gender === "male" ? "👨" : v.voice_gender === "female" ? "👩" : "";
           const el = document.createElement("div");
           el.className = "cursor-pointer";
           el.innerHTML = `
@@ -217,13 +221,18 @@ export default function CampusMap() {
               background: #e22718; border: 3px solid #000;
               display: flex; align-items: center; justify-content: center;
               font-size: 14px; box-shadow: 0 0 12px #e2271880;
-              animation: pulse-red 1.6s ease-in-out infinite;
-            ">🎙️</div>
+              animation: pulse-red 1.6s ease-in-out infinite; position: relative;
+            ">🎙️${genderIcon ? `<span style="
+              position: absolute; top: -6px; right: -6px;
+              background: #000; border: 1px solid #e22718; border-radius: 50%;
+              width: 16px; height: 16px; display: flex; align-items: center;
+              justify-content: center; font-size: 9px;
+            ">${genderIcon}</span>` : ""}</div>
             <div style="
               position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%);
               background: #000; border: 1px solid #e22718; color: #bbb;
               font-size: 7px; padding: 1px 3px; white-space: nowrap;
-            ">Voice</div>
+            ">${v.voice_gender ? v.voice_gender.charAt(0).toUpperCase() + v.voice_gender.slice(1) + " voice" : "Voice"}</div>
           `;
           const marker = new google.maps.marker.AdvancedMarkerElement({
             map,

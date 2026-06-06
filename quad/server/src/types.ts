@@ -79,6 +79,9 @@ export interface Post {
   created_at: string;
 
   voice_url?: string; // for voice notes (RumiK TTS)
+  voice_gender?: "male" | "female"; // which RumiK voice synthesized the note
+  lat?: number; // campus location for voice notes pinned to the map
+  lng?: number;
 
   // Type-specific payloads (only the relevant one is populated).
   enrichment?: NoteEnrichment;
