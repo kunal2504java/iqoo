@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* safe-area helpers for the iQOO notch / gesture bar */
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: #000000;
+    color: theme("colors.body.DEFAULT");
+    font-family: theme("fontFamily.body");
+    font-weight: 300; /* the "engineered" light body voice */
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  /* Display headlines: heavy, tight, UPPERCASE machined voice */
+  h1, h2, h3, .font-display {
+    font-family: theme("fontFamily.display");
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0;
+  }
+
+  ::selection {
+    background: theme("colors.m.blue");
+    color: #fff;
+  }
+
+  input, textarea, button {
+    font-family: inherit;
+  }
+  button { -webkit-tap-highlight-color: transparent; }
+}
+
+@layer components {
+  /* The M tricolor stripe — the brand signature. Divider / accent only. */
+  .m-stripe {
+    background: linear-gradient(
+      90deg,
+      theme("colors.m.bluelight") 0%,
+      theme("colors.m.bluelight") 33%,
+      theme("colors.m.blue") 33%,
+      theme("colors.m.blue") 66%,
+      theme("colors.m.red") 66%,
+      theme("colors.m.red") 100%
+    );
+  }
+
+  /* machined all-caps label */
+  .machined {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+  }
+
+  /* flat rectangular primary button — uppercase, 0 radius, outline */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 h-12 px-6 machined text-[13px] text-ink
+           border border-ink bg-transparent transition-colors duration-150 select-none;
+  }
+  .btn-fill {
+    @apply bg-ink text-canvas border-ink;
+  }
+  .btn-ghost {
+    @apply border-hairline text-body hover:text-ink hover:border-ink;
+  }
+  .btn-blue {
+    @apply bg-m-blue border-m-blue text-ink;
+  }
+  .btn:disabled { @apply opacity-40 pointer-events-none; }
+
+  .card {
+    @apply bg-surface border border-hairline-strong;
+  }
+
+  .input {
+    @apply h-12 w-full bg-surface border border-hairline px-4 text-ink placeholder:text-muted
+           font-body font-light outline-none focus:border-ink transition-colors;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] machined border
+           border-hairline text-body select-none transition-colors;
+  }
+  .chip-on {
+    @apply border-m-blue text-ink bg-m-blue/15;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .pt-safe { padding-top: var(--sat); }
+  .pb-safe { padding-bottom: var(--sab); }
+  .min-h-safe { min-height: calc(100% ); }
+}
+
+/* slim scrollbars on the dark canvas */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #2b2b2b; }
+::-webkit-scrollbar-track { background: transparent; }

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(psql --version)",
+      "Bash(git --version)",
+      "Skill(claude-api)"
+    ]
+  }
+}
