@@ -15,6 +15,7 @@ import { findDuplicate } from "./ai/dedup.js";
 import { hashImage, loadFallbacks } from "./ai/fallback.js";
 import { prewarm, hasKey, VISION_MODEL, TEXT_MODEL, type ImageInput } from "./ai/client.js";
 import { askOracle } from "./oracle.js";
+import { synthesizeSpeech, hasRumikKey } from "./ai/rumikTts.js";
 import type { Post, PostType, User } from "./types.js";
 
 const PORT = Number(process.env.PORT || 4000);
@@ -184,6 +185,58 @@ app.post("/contribute", upload.single("image"), async (req, res) => {
   }
 });
 
+// ── Voice Note — text-to-speech via RumiK, pinned to map location ──
+app.post("/contribute/voice", async (req, res) => {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({ error: "no user" });
+
+  const text = (req.body?.text || "").trim();
+  if (!text) return res.status(400).json({ error: "text required" });
+  if (text.length > 200) return res.status(400).json({ error: "max 200 chars" });
+
+  try {
+    let voiceUrl = "";
+    if (hasRumikKey) {
+      const wav = await synthesizeSpeech(text, { model: "muga" });
+      const fname = `voice_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.wav`;
+      fs.writeFileSync(path.join(UPLOAD_DIR, fname), wav);
+      voiceUrl = `/uploads/${fname}`;
+    }
+
+    const post: Post = {
+      id: `p_voice_${Date.now()}`,
+      type: "voice",
+      author_id: user.id,
+      title: "🎙️ Voice Note",
+      description: text,
+      voice_url: voiceUrl,
+      status: "enriched",
+      topic_tags: ["Voice"],
+      branch_relevance: [user.branch],
+      year_relevance: [user.year],
+      created_at: new Date().toISOString(),
+      trust: { verified_by: 0, topped_exam: 0 },
+      tip_count: 0,
+      lat: user.lat,
+      lng: user.lng,
+    };
+
+    store.addPost(post);
+    store.bumpStats("note");
+    store.addInteraction({ user_id: user.id, post_id: post.id, action: "contribute", at: new Date().toISOString() });
+
+    res.json({
+      post: decorate(post, user),
+      used_fallback: !hasRumikKey,
+      matched_count: matchedCount(post),
+      stats: store.stats,
+    });
+  } catch (e) {
+    console.error("[voice] error:", e);
+    res.status(500).json({ error: "voice synthesis failed" });
+  }
+});
+
 app.get("/post/:id", (req, res) => {
   const post = store.getPost(req.params.id);
   if (!post) return res.status(404).json({ error: "not found" });
@@ -291,6 +344,15 @@ app.post("/nudges/read", (req, res) => {
 });
 
 // ── Campus Live Events Feed ──
+app.get("/voices", (req, res) => {
+  const user = currentUser(req);
+  const voices = store.listPosts()
+    .filter((p) => p.type === "voice")
+    .map((p) => decorate(p, user))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  res.json({ voices });
+});
+
 app.get("/events/live", (req, res) => {
   const user = currentUser(req);
   if (!user) return res.status(401).json({ error: "no user" });

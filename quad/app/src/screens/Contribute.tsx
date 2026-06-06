@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, FileText, ImagePlus, Briefcase, Type, Check, RotateCcw, Layers, Lightbulb, BookOpen, ExternalLink, Zap } from "lucide-react";
+import { ArrowLeft, FileText, ImagePlus, Briefcase, Type, Check, RotateCcw, Layers, Lightbulb, BookOpen, ExternalLink, Zap, Mic } from "lucide-react";
 import CameraCapture from "../components/CameraCapture";
 import type { CapturedImage } from "../hooks/useCamera";
 import { api, imageUrl } from "../api";
@@ -10,10 +10,11 @@ import type { Post } from "../api";
 export default function Contribute() {
   const navigate = useNavigate();
   const [step, setStep] = useState<"choose" | "capture" | "meta" | "enriching" | "reveal">("choose");
-  const [kind, setKind] = useState<"note" | "poster" | "drive" | "text">("note");
+  const [kind, setKind] = useState<"note" | "poster" | "drive" | "text" | "voice">("note");
   const [image, setImage] = useState<CapturedImage | null>(null);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
+  const [voiceText, setVoiceText] = useState("");
   // Drive-specific fields
   const [driveRole, setDriveRole] = useState("");
   const [driveCtc, setDriveCtc] = useState("");
@@ -24,7 +25,7 @@ export default function Contribute() {
   const [error, setError] = useState("");
   const startCapture = (k: typeof kind) => {
     setKind(k);
-    if (k === "text" || k === "drive") {
+    if (k === "text" || k === "drive" || k === "voice") {
       setStep("meta");
     } else {
       setStep("capture");
@@ -49,6 +50,9 @@ export default function Contribute() {
           title: title || `${driveRole || desc} — Campus Drive`,
           tags: driveTags.split(",").map((t) => t.trim()).filter(Boolean),
         });
+        setResult({ post: res.post, matched_count: res.matched_count, stats: res.stats });
+      } else if (kind === "voice") {
+        const res = await api.contributeVoice(voiceText);
         setResult({ post: res.post, matched_count: res.matched_count, stats: res.stats });
       } else {
         const form = new FormData();
@@ -115,6 +119,13 @@ export default function Contribute() {
                 <div className="text-xs text-muted">Announcement or note</div>
               </div>
             </button>
+            <button onClick={() => startCapture("voice")} className="flex w-full items-center gap-3 border border-hairline bg-surface p-4 text-left hover:border-ink transition-colors">
+              <Mic size={20} className="text-m-red" />
+              <div>
+                <div className="text-sm font-medium">Voice note</div>
+                <div className="text-xs text-muted">Type → RumiK TTS → pin to map</div>
+              </div>
+            </button>
           </motion.div>
         )}
 
@@ -145,6 +156,19 @@ export default function Contribute() {
               <div className="space-y-3">
                 <input className="input" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
                 <textarea className="input min-h-[80px] py-3" placeholder="What do you want to say?" value={desc} onChange={(e) => setDesc(e.target.value)} />
+              </div>
+            )}
+            {kind === "voice" && (
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-widest text-muted">Type what you want the voice to say</p>
+                <textarea
+                  className="input min-h-[80px] py-3"
+                  placeholder="Hey, I'm heading to the library. Join me?"
+                  value={voiceText}
+                  onChange={(e) => setVoiceText(e.target.value.slice(0, 200))}
+                  maxLength={200}
+                />
+                <div className="text-[10px] text-muted text-right">{voiceText.length}/200</div>
               </div>
             )}
             {(kind === "note" || kind === "poster") && (

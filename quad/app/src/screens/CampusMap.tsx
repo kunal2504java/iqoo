@@ -59,6 +59,8 @@ export default function CampusMap() {
   const [nudgeText, setNudgeText] = useState("");
   const [nudgeLoading, setNudgeLoading] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
+  const [voices, setVoices] = useState<any[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
 
@@ -82,14 +84,26 @@ export default function CampusMap() {
 
   // Load data
   useEffect(() => {
-    Promise.all([api.getMap(), api.getActiveUsers()])
-      .then(([mapData, userData]) => {
+    Promise.all([api.getMap(), api.getActiveUsers(), api.getVoices()])
+      .then(([mapData, userData, voiceData]) => {
         setZones(mapData.zones.map((z) => ({ ...z, lat: CAMPUS_CENTER.lat + (Math.random() - 0.5) * 0.004, lng: CAMPUS_CENTER.lng + (Math.random() - 0.5) * 0.004 })));
         setActiveUsers(userData.users);
+        setVoices(voiceData.voices);
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, []);
+
+  const playVoice = (url: string) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    const a = new Audio(url);
+    a.play();
+    audioRef.current = a;
+    a.onended = () => { audioRef.current = null; };
+  };
 
   // Initialize map
   useEffect(() => {
@@ -188,6 +202,37 @@ export default function CampusMap() {
           });
           marker.addListener("click", () => {
             setSelectedUser(u);
+          });
+          markersRef.current.push(marker);
+        });
+
+        // Voice note markers — glowing red recording dots
+        voices.forEach((v) => {
+          if (!v.lat || !v.lng) return;
+          const el = document.createElement("div");
+          el.className = "cursor-pointer";
+          el.innerHTML = `
+            <div style="
+              width: 32px; height: 32px; border-radius: 50%;
+              background: #e22718; border: 3px solid #000;
+              display: flex; align-items: center; justify-content: center;
+              font-size: 14px; box-shadow: 0 0 12px #e2271880;
+              animation: pulse-red 1.6s ease-in-out infinite;
+            ">🎙️</div>
+            <div style="
+              position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%);
+              background: #000; border: 1px solid #e22718; color: #bbb;
+              font-size: 7px; padding: 1px 3px; white-space: nowrap;
+            ">Voice</div>
+          `;
+          const marker = new google.maps.marker.AdvancedMarkerElement({
+            map,
+            position: { lat: v.lat, lng: v.lng },
+            title: v.description || "Voice note",
+            content: el,
+          });
+          marker.addListener("click", () => {
+            if (v.voice_url) playVoice(v.voice_url);
           });
           markersRef.current.push(marker);
         });

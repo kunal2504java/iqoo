@@ -28,11 +28,12 @@ export interface TrustSignals {
 
 export interface Post {
   id: string;
-  type: "note" | "event" | "drive" | "announcement" | "menu";
+  type: "note" | "event" | "drive" | "announcement" | "menu" | "voice";
   author_id: string;
   title: string;
   description: string;
   image_url?: string;
+  voice_url?: string;
   status: string;
   topic_tags: string[];
   branch_relevance: string[];
@@ -45,6 +46,8 @@ export interface Post {
   enrichment?: NoteEnrichment;
   drive?: DriveDetails;
   event?: EventDetails;
+  lat?: number;
+  lng?: number;
   // decorated fields from feed
   author?: User;
   score?: number;
@@ -245,6 +248,8 @@ export const api = {
 
   liveEvents: () => fetchJSON<{ events: Post[] }>("/events/live"),
 
+  getVoices: () => fetchJSON<{ voices: Post[] }>("/voices"),
+
   rsvpEvent: (eventId: string) =>
     fetchJSON<{ ok: boolean; rsvp_count: number; rsvp_users: string[] }>(`/events/${eventId}/rsvp`, {
       method: "POST",
@@ -255,6 +260,14 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ emoji }),
+    }),
+
+  // ── Voice Note — RumiK TTS ──
+  contributeVoice: (text: string) =>
+    fetchJSON<{ post: Post; used_fallback: boolean; matched_count: number; stats: Stats }>("/contribute/voice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
     }),
 
   // ── Campus Nudge — map pings ──

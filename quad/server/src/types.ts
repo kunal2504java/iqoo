@@ -3,7 +3,7 @@
 
 export type Role = "student" | "senior" | "alumni" | "admin";
 
-export type PostType = "note" | "event" | "drive" | "announcement" | "menu";
+export type PostType = "note" | "event" | "drive" | "announcement" | "menu" | "voice";
 
 export type PostStatus = "pending" | "enriched" | "failed";
 
@@ -77,6 +77,8 @@ export interface Post {
   year_relevance: string[];
   dedup_hash?: string;
   created_at: string;
+
+  voice_url?: string; // for voice notes (RumiK TTS)
 
   // Type-specific payloads (only the relevant one is populated).
   enrichment?: NoteEnrichment;
